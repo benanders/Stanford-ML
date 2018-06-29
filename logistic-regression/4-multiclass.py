@@ -19,12 +19,12 @@ import scipy.io, scipy.optimize
 data = scipy.io.loadmat("data-3.mat")
 images = data["X"]
 digits = data["y"]
+num_samples = digits.size
+num_features = images.shape[1] + 1 # Add one for bias parameter
 
 # To make dealing with MatLab's 1 based indexing easier, the digit 0 is
 # represented by 10. Since we're using Python we revert this.
 digits = np.array([0 if x == 10 else x for x in digits])
-num_samples = digits.size
-num_features = images.shape[1] + 1 # Add one for bias parameter
 
 # We use a simple LINEAR decision boundary; this is akin to a plane in 401
 # dimensional space separating each class
