@@ -52,7 +52,7 @@ def cost(parameters):
 	positive_weights = -accepted * np.log(predicted)
 	negative_weights = -(1 - accepted) * np.log(1 - predicted)
 	costs = positive_weights + negative_weights
-	regularization = regularization_weight * np.sum(parameters ** 2)
+	regularization = regularization_weight * np.sum(parameters[1:] ** 2)
 	return (np.sum(costs) + regularization / 2.0) / num_samples
 
 # Returns an array of `num_features` partial derivatives of the cost function,
