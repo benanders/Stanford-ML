@@ -9,7 +9,7 @@
 # There are 5000 rows of training data.
 #
 # Neural network architecture: 400 input neurons in the first input layer, 25
-# neurons in the second hidden layer, 10 output neurons, one for each digit, in
+# neurons in the second hidden layer, 10 output neurons (one for each digit) in
 # the output layer.
 
 import numpy as np
