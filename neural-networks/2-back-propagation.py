@@ -74,5 +74,16 @@ def cost(params1, params2):
 		total_cost += cost
 	return total_cost / num_samples
 
+regularization_constant = 1.0
+
+# Regularized neural network cost function
+def cost_reg(params1, params2):
+	non_reg_cost = cost(params1, params2)
+
+	# Add on the regularization term, excluding the bias weights (i.e. first
+	# column of each matrix)
+	reg_cost = np.sum(params1[:,1:] ** 2) + np.sum(params2[:,1:] ** 2)
+	return non_reg_cost + reg_cost / (2.0 * num_samples)
+
 # Calculate the cost with the pre-trained weights
-print("Cost: ", cost(params1, params2))
+print("Cost: ", cost_reg(params1, params2))
