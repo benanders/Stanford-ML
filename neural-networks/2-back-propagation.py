@@ -14,29 +14,34 @@
 
 import numpy as np
 import numpy.random, numpy.linalg
-import scipy.io
-
-regularization_constant = 1.0
+import scipy.io, scipy.optimize
 
 # Sigmoid activation function
 def sigmoid(z):
 	return 1.0 / (1.0 + np.exp(-z))
 
 # Neural network cost function (without regularization)
-def cost(features, params1, params2, correct_digits):
-	num_training_examples = features.shape[0]
-	num_outputs = params2.shape[0]
+def cost(params, layer1_size, layer2_size, layer3_size, X, y, regularization):
+	num_training_examples = X.shape[0]
 	total_cost = 0
+
+	# Unpack the parameter matrices
+	params1_shape = (layer2_size, layer1_size + 1)
+	params1_size = params1_shape[0] * params1_shape[1]
+	params2_shape = (layer3_size, layer2_size + 1)
+	params2_size = params2_shape[0] * params2_shape[1]
+	params1 = params[0:params1_size].reshape(params1_shape)
+	params2 = params[params1_size:].reshape(params2_shape)
 
 	# Sum the cost over each of the training examples
 	for i in range(0, num_training_examples):
 		# Extract the training example and its correct answer
-		training_example = features[i,:]
-		correct_digit = correct_digits[i]
+		training_example = X[i,:]
+		correct_digit = y[i]
 
 		# Create the correct output array, with the correct digit set to 1 and
 		# everything else set to 0
-		correct_output = np.zeros(num_outputs)
+		correct_output = np.zeros(layer3_size)
 		correct_output[correct_digit] = 1.0
 
 		# Feed forward: compute the output of the neural network with the given
@@ -54,19 +59,24 @@ def cost(features, params1, params2, correct_digits):
 	return total_cost / num_training_examples
 
 # Regularized neural network cost function
-def cost_reg(features, params1, params2, correct_digits):
-	num_training_examples = features.shape[0]
-	non_reg_cost = cost(features, params1, params2, correct_digits)
+def cost_reg(params, layer1_size, layer2_size, layer3_size, X, y,
+		regularization):
+	num_training_examples = X.shape[0]
+	non_reg_cost = cost(params, layer1_size, layer2_size, layer3_size, X, y,
+		regularization)
+
+	# Unpack the parameter matrices
+	params1_shape = (layer2_size, layer1_size + 1)
+	params1_size = params1_shape[0] * params1_shape[1]
+	params2_shape = (layer3_size, layer2_size + 1)
+	params2_size = params2_shape[0] * params2_shape[1]
+	params1 = params[0:params1_size].reshape(params1_shape)
+	params2 = params[params1_size:].reshape(params2_shape)
 
 	# Add on the regularization term, excluding the bias weights (i.e. first
 	# column of each matrix)
 	reg_cost = np.sum(params1[:,1:] ** 2) + np.sum(params2[:,1:] ** 2)
 	return non_reg_cost + reg_cost / (2.0 * num_training_examples)
-
-# Gradient of the sigmoid function
-def sigmoid_grad(z):
-	sigmoid_z = sigmoid(z)
-	return sigmoid_z * (1.0 - sigmoid_z)
 
 # Randomly initializes the weights for the parameter matrices
 def rand_init(shape):
@@ -75,24 +85,30 @@ def rand_init(shape):
 
 # Use the back propagation algorithm to compute the partial derivatives of the
 # cost function with respect to every weight in every layer of the network
-def cost_grad(features, params1, params2, correct_digits):
+def cost_grad(params, layer1_size, layer2_size, layer3_size, X, y,
+		regularization):
 	# Number of neurons in each layer
-	num_training_examples = features.shape[0]
-	layer1_num_neurons = features.shape[1] - 1 # Exclude bias node
-	layer2_num_neurons = params1.shape[0]
-	layer3_num_neurons = params2.shape[0]
+	num_training_examples = X.shape[0]
+
+	# Unpack the parameter matrices
+	params1_shape = (layer2_size, layer1_size + 1)
+	params1_size = params1_shape[0] * params1_shape[1]
+	params2_shape = (layer3_size, layer2_size + 1)
+	params2_size = params2_shape[0] * params2_shape[1]
+	params1 = params[0:params1_size].reshape(params1_shape)
+	params2 = params[params1_size:].reshape(params2_shape)
 
 	# Used eventually to compute the partial derivatives
 	# Include the weights extending from the bias nodes
-	layer1_Delta = np.zeros((layer2_num_neurons, layer1_num_neurons + 1))
-	layer2_Delta = np.zeros((layer3_num_neurons, layer2_num_neurons + 1))
+	layer1_Delta = np.zeros((layer2_size, layer1_size + 1))
+	layer2_Delta = np.zeros((layer3_size, layer2_size + 1))
 
 	# Sum the gradient of the cost function over each training example
 	for i in range(0, num_training_examples):
 		# Get the input training example and the correct output vector
-		training_example = features[i,:]
-		correct_digit = correct_digits[i]
-		correct_output = np.zeros(layer3_num_neurons)
+		training_example = X[i,:]
+		correct_digit = y[i]
+		correct_output = np.zeros(layer3_size)
 		correct_output[correct_digit] = 1.0
 
 		# Forward propagate to get the network's output
@@ -116,13 +132,13 @@ def cost_grad(features, params1, params2, correct_digits):
 		# We exclude the bias node from layer 2 when calculating the layer 1
 		# Delta because there's no connections from any neuron in layer 1 to
 		# that bias node, so no opportunity to back-propagate!
-		a1 = layer2_delta[1:].reshape((layer2_num_neurons, 1))
-		b1 = layer1_values.reshape((1, layer1_num_neurons + 1))
+		a1 = layer2_delta[1:].reshape((layer2_size, 1))
+		b1 = layer1_values.reshape((1, layer1_size + 1))
 		c1 = a1.dot(b1)
 		layer1_Delta += c1
 
-		a2 = layer3_delta.reshape((layer3_num_neurons, 1))
-		b2 = layer2_values.reshape((1, layer2_num_neurons + 1))
+		a2 = layer3_delta.reshape((layer3_size, 1))
+		b2 = layer2_values.reshape((1, layer2_size + 1))
 		c2 = a2.dot(b2)
 		layer2_Delta += c2
 
@@ -133,13 +149,24 @@ def cost_grad(features, params1, params2, correct_digits):
 	return np.append(params1_grad, params2_grad)
 
 # Gradient of the cost function with regularization
-def cost_grad_reg(features, params1, params2, correct_digits):
-	num_training_examples = features.shape[0]
-	grad = cost_grad(features, params1, params2, correct_digits)
+def cost_grad_reg(params, input_size, hidden_size, output_size, X, y,
+		regularization):
+	num_training_examples = X.shape[0]
+	grad = cost_grad(params, input_size, hidden_size, output_size, X, y,
+		regularization)
+
+	# Shapes of the parameter matrices for the first (input) and second (hidden)
+	# layers
+	params1_shape = (hidden_size, input_size + 1)
+	params1_size = params1_shape[0] * params1_shape[1]
+	params2_shape = (output_size, hidden_size + 1)
+	params2_size = params2_shape[0] * params2_shape[1]
 
 	# Unpack the gradient matrices again
-	params1_grad = grad[0:params1.size].reshape(params1.shape)
-	params2_grad = grad[params1.size:].reshape(params2.shape)
+	params1 = params[0:params1_size].reshape(params1_shape)
+	params2 = params[params1_size:].reshape(params2_shape)
+	params1_grad = grad[0:params1_size].reshape(params1_shape)
+	params2_grad = grad[params1_size:].reshape(params2_shape)
 
 	# Add the regularization term, excluding the bias weights
 	factor = regularization_constant / num_training_examples
@@ -149,15 +176,11 @@ def cost_grad_reg(features, params1, params2, correct_digits):
 	# Unroll again
 	return np.append(params1_grad, params2_grad)
 
-
 # Returns a gradient vector similar to cost_grad, but computed analytically
 # by pertubing each parameter slightly
-def cost_grad_numeric(features, params1, params2, correct_digits):
+def cost_grad_numeric(params, input_size, hidden_size, output_size, X, y,
+		regularization):
 	epsilon = 0.0001
-
-	# Unroll the parameters into a single vector
-	params = np.append(params1.reshape((params1.size,)),
-		params2.reshape((params2.size,)))
 
 	# Pertube each parameter
 	grad = np.zeros(params.size)
@@ -169,12 +192,10 @@ def cost_grad_numeric(features, params1, params2, correct_digits):
 		minus[i] -= epsilon
 
 		# Calculate cost and numerically estimate the gradient
-		p1 = plus[0:params1.size].reshape(params1.shape)
-		p2 = plus[params1.size:].reshape(params2.shape)
-		plus_cost = cost_reg(features, p1, p2, correct_digits)
-		m1 = minus[0:params1.size].reshape(params1.shape)
-		m2 = minus[params1.size:].reshape(params2.shape)
-		minus_cost = cost_reg(features, m1, m2, correct_digits)
+		plus_cost = cost_reg(plus, input_size, hidden_size,
+			output_size, X, y, regularization)
+		minus_cost = cost_reg(minus, input_size, hidden_size,
+			output_size, X, y, regularization)
 		grad[i] = (plus_cost - minus_cost) / (2.0 * epsilon)
 	return grad
 
@@ -183,23 +204,26 @@ def cost_grad_numeric(features, params1, params2, correct_digits):
 def grad_check():
 	# Create a small neural network, since gradient checking is expensive and we
 	# don't want the process to take too long
-	layer1_num_neurons = 3
-	layer2_num_neurons = 5
-	layer3_num_neurons = 3
+	input_size = 3
+	hidden_size = 5
+	output_size = 3
 	num_training_examples = 5
 
 	# Randomly initialise the parameters matrices
-	params1 = rand_init((layer2_num_neurons, layer1_num_neurons + 1))
-	params2 = rand_init((layer3_num_neurons, layer2_num_neurons + 1))
+	params1 = rand_init((hidden_size, input_size + 1))
+	params2 = rand_init((output_size, hidden_size + 1))
+	params = np.append(params1, params2)
 
 	# Randomly initialise an input vector and output digits vector
-	features = rand_init((num_training_examples, layer1_num_neurons))
-	features = np.append(np.ones((num_training_examples, 1)), features, axis=1)
-	digits = np.mod(np.arange(0, num_training_examples), layer3_num_neurons)
+	X = rand_init((num_training_examples, input_size))
+	X = np.append(np.ones((num_training_examples, 1)), X, axis=1)
+	y = np.mod(np.arange(0, num_training_examples), output_size)
 
 	# Compute the analytical and numerical gradients
-	analytic = cost_grad_reg(features, params1, params2, digits)
-	numeric = cost_grad_numeric(features, params1, params2, digits)
+	analytic = cost_grad_reg(params, input_size, hidden_size, output_size,
+		X, y, 1.0)
+	numeric = cost_grad_numeric(params, input_size, hidden_size, output_size,
+		X, y, 1.0)
 
 	# Compare them as two column vectors
 	print(np.append(analytic.reshape(analytic.size, 1),
@@ -209,6 +233,8 @@ def grad_check():
 	difference = np.linalg.norm(analytic - numeric) \
 		/ np.linalg.norm(analytic + numeric)
 	print("Difference: " + str(difference))
+
+regularization_constant = 1.0
 
 # Load training data
 training_data = scipy.io.loadmat("data-2.mat")
@@ -236,5 +262,6 @@ last_row = np.copy(params2[9,:])
 other_rows = np.copy(params2[0:9,:])
 params2 = np.insert(other_rows, 0, last_row, axis=0)
 
-# Try gradient checking
+# Disable gradient checking, since we know the algorithm works
 grad_check()
+
