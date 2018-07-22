@@ -16,6 +16,8 @@ import numpy as np
 import numpy.random, numpy.linalg
 import scipy.io
 
+regularization_constant = 1.0
+
 # Sigmoid activation function
 def sigmoid(z):
 	return 1.0 / (1.0 + np.exp(-z))
@@ -51,8 +53,6 @@ def cost(features, params1, params2, correct_digits):
 		total_cost += cost
 	return total_cost / num_training_examples
 
-regularization_constant = 1.0
-
 # Regularized neural network cost function
 def cost_reg(features, params1, params2, correct_digits):
 	num_training_examples = features.shape[0]
@@ -78,11 +78,12 @@ def rand_init(shape):
 def cost_grad(features, params1, params2, correct_digits):
 	# Number of neurons in each layer
 	num_training_examples = features.shape[0]
-	layer1_num_neurons = features.shape[1] - 1
+	layer1_num_neurons = features.shape[1] - 1 # Exclude bias node
 	layer2_num_neurons = params1.shape[0]
 	layer3_num_neurons = params2.shape[0]
 
 	# Used eventually to compute the partial derivatives
+	# Include the weights extending from the bias nodes
 	layer1_Delta = np.zeros((layer2_num_neurons, layer1_num_neurons + 1))
 	layer2_Delta = np.zeros((layer3_num_neurons, layer2_num_neurons + 1))
 
@@ -129,8 +130,25 @@ def cost_grad(features, params1, params2, correct_digits):
 	params2_grad = layer2_Delta / num_training_examples
 
 	# Unroll the gradients into a single vector
-	grad = np.append(params1_grad, params2_grad)
-	return grad
+	return np.append(params1_grad, params2_grad)
+
+# Gradient of the cost function with regularization
+def cost_grad_reg(features, params1, params2, correct_digits):
+	num_training_examples = features.shape[0]
+	grad = cost_grad(features, params1, params2, correct_digits)
+
+	# Unpack the gradient matrices again
+	params1_grad = grad[0:params1.size].reshape(params1.shape)
+	params2_grad = grad[params1.size:].reshape(params2.shape)
+
+	# Add the regularization term, excluding the bias weights
+	factor = regularization_constant / num_training_examples
+	params1_grad[:,1:] += factor * params1[:,1:]
+	params2_grad[:,1:] += factor * params2[:,1:]
+
+	# Unroll again
+	return np.append(params1_grad, params2_grad)
+
 
 # Returns a gradient vector similar to cost_grad, but computed analytically
 # by pertubing each parameter slightly
@@ -153,12 +171,11 @@ def cost_grad_numeric(features, params1, params2, correct_digits):
 		# Calculate cost and numerically estimate the gradient
 		p1 = plus[0:params1.size].reshape(params1.shape)
 		p2 = plus[params1.size:].reshape(params2.shape)
-		plus_cost = cost(features, p1, p2, correct_digits)
+		plus_cost = cost_reg(features, p1, p2, correct_digits)
 		m1 = minus[0:params1.size].reshape(params1.shape)
 		m2 = minus[params1.size:].reshape(params2.shape)
-		minus_cost = cost(features, m1, m2, correct_digits)
+		minus_cost = cost_reg(features, m1, m2, correct_digits)
 		grad[i] = (plus_cost - minus_cost) / (2.0 * epsilon)
-		print("grad", plus_cost, minus_cost)
 	return grad
 
 # Gradient checks our back propagation algorithm using a small test neural
@@ -181,7 +198,7 @@ def grad_check():
 	digits = np.mod(np.arange(0, num_training_examples), layer3_num_neurons)
 
 	# Compute the analytical and numerical gradients
-	analytic = cost_grad(features, params1, params2, digits)
+	analytic = cost_grad_reg(features, params1, params2, digits)
 	numeric = cost_grad_numeric(features, params1, params2, digits)
 
 	# Compare them as two column vectors
