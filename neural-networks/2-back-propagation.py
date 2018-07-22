@@ -76,7 +76,8 @@ def cost_reg(params, layer1_size, layer2_size, layer3_size, X, y,
 	# Add on the regularization term, excluding the bias weights (i.e. first
 	# column of each matrix)
 	reg_cost = np.sum(params1[:,1:] ** 2) + np.sum(params2[:,1:] ** 2)
-	return non_reg_cost + reg_cost / (2.0 * num_training_examples)
+	factor = regularization / (2.0 * num_training_examples)
+	return non_reg_cost + reg_cost * factor
 
 # Randomly initializes the weights for the parameter matrices
 def rand_init(shape):
@@ -169,7 +170,7 @@ def cost_grad_reg(params, input_size, hidden_size, output_size, X, y,
 	params2_grad = grad[params1_size:].reshape(params2_shape)
 
 	# Add the regularization term, excluding the bias weights
-	factor = regularization_constant / num_training_examples
+	factor = regularization / num_training_examples
 	params1_grad[:,1:] += factor * params1[:,1:]
 	params2_grad[:,1:] += factor * params2[:,1:]
 
@@ -234,34 +235,65 @@ def grad_check():
 		/ np.linalg.norm(analytic + numeric)
 	print("Difference: " + str(difference))
 
+# Uses the set of parameters to predict what digit the given image looks like
+def predict(params, layer1_size, layer2_size, layer3_size, image):
+	# Unpack the parameter matrices
+	params1_shape = (layer2_size, layer1_size + 1)
+	params1_size = params1_shape[0] * params1_shape[1]
+	params2_shape = (layer3_size, layer2_size + 1)
+	params2_size = params2_shape[0] * params2_shape[1]
+	params1 = params[0:params1_size].reshape(params1_shape)
+	params2 = params[params1_size:].reshape(params2_shape)
+
+	# Forward propagate to get the network's output
+	layer1_values = image
+	layer2_values = sigmoid(params1.dot(layer1_values))
+	layer2_values = np.append(np.array((1.0)), layer2_values)
+	layer3_values = sigmoid(params2.dot(layer2_values))
+	output = layer3_values
+
+	# The digit we're after is the index of the greatest value in `output`
+	return np.argmax(output)
+
 regularization_constant = 1.0
 
 # Load training data
 training_data = scipy.io.loadmat("data-2.mat")
-images = training_data["X"]
-digits = training_data["y"]
-num_samples = images.shape[0]
-num_features = images.shape[1]
+X = training_data["X"]
+y = training_data["y"]
+num_training_examples = X.shape[0]
 
 # To make dealing with MatLab's 1 based indexing easier, the digit 0 is
 # represented by 10. Since we're using Python we revert this.
-digits = np.array([0 if x == 10 else x for x in digits])
+y = np.array([0 if x == 10 else x for x in y])
 
 # Add column of 1s for the bias parameter
-features = np.append(np.ones((num_samples, 1)), images, axis=1)
-
-# Load pre-trained neural network weights
-weights_data = scipy.io.loadmat("weights-2.mat")
-params1 = weights_data["Theta1"] # 25x401 weights for input layer
-params2	= weights_data["Theta2"] # 10x26 weights for hidden layer
-
-# Because of the annoying 10 = 0 thing above, we need to reorder the weights in
-# params2 because the last row (row 10) is for predicing digit 0 (which, in our
-# model, should be the first row)
-last_row = np.copy(params2[9,:])
-other_rows = np.copy(params2[0:9,:])
-params2 = np.insert(other_rows, 0, last_row, axis=0)
+X = np.append(np.ones((num_training_examples, 1)), X, axis=1)
 
 # Disable gradient checking, since we know the algorithm works
-grad_check()
+# grad_check()
 
+# Network architecture
+input_size = 400
+hidden_size = 25
+output_size = 10
+
+# Randomly initialise the parameter matrices
+params1 = rand_init((hidden_size, input_size + 1))
+params2 = rand_init((output_size, hidden_size + 1))
+init_params = np.append(params1, params2)
+
+# Learn the best parameters
+best_params = scipy.optimize.fmin_cg(cost_reg, init_params,
+	fprime=cost_grad_reg,
+	args=(input_size, hidden_size, output_size, X, y, regularization_constant),
+	maxiter=50)
+
+# Test the training accuracy of the network
+correct = 0
+for i in range(0, num_training_examples):
+	image = X[i]
+	predicted = predict(best_params, input_size, hidden_size, output_size, image)
+	if predicted == y[i]:
+		correct += 1
+print("Accuracy: " + str(float(correct) / num_training_examples * 100.0) + "%")
