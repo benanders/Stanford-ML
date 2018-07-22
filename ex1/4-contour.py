@@ -6,21 +6,22 @@
 # much profit the business would make if it were to set up operations in a
 # city with a particular population.
 #
-# This plots various learning rates that both cause gradient descent to converge
-# and not converge to a stable value.
+# This version shows a contour plot of the cost function around the minimum
+# parameters found by gradient descent. It plots the path taken by gradient
+# descent using a convergent and non-convergent learning rate.
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 # Read in the population and profit data from a CSV file
-data = np.genfromtxt("./data-1.txt", delimiter=",")
+data = np.genfromtxt("1-data.txt", delimiter=",")
 populations = data[:,0]
 profits = data[:,1]
 num_samples = populations.size
 num_features = 2
 
-# Create a figure with 2 sets of axes
-_, (convergent, non_convergent) = plt.subplots(1, 2)
+# Create a figure with only 1 set of axes
+_, axes = plt.subplots()
 
 # Create the features matrix by adding a column of 1s to the population data,
 # so we can treat the y intercept of the line as another feature
@@ -41,34 +42,35 @@ def descend(parameters, learning_rate):
 	return parameters
 
 # Runs `iteration` iterations of gradient descent to minimise the cost function
-def gradient_descent(learning_rate=0.02, iterations=1500):
+def gradient_descent(learning_rate = 0.02, iterations = 1500):
 	params_history = [np.array((0.0, 0.0))]
-	for _ in range(0, iterations - 1):
-		next_params = descend(np.copy(params_history[-1]), learning_rate)
-		params_history.append(next_params)
+	for _ in range(0, iterations):
+		next_params = descend(params_history[-1], learning_rate)
+		params_history.append(np.copy(next_params))
 	return params_history
 
-# Plots cost function vs. iterations for a series of learning rates
+# Show a contour plot around the minimum parameters
+x = np.arange(-10, 10, 0.1)
+y = np.arange(-1, 4, 0.1)
+xx, yy = np.meshgrid(x, y)
 vectorized_cost = np.vectorize(lambda x, y: cost(np.array((x, y))))
-def plot_cost_function(axes, learning_rates, iterations, clip_min=None,
-		clip_max=None):
-	axes.set_title("Cost vs. Iterations")
-	axes.set_xlabel("Iterations")
-	axes.set_ylabel("Cost")
-	for rate in learning_rates:
-		iteration_counts = np.linspace(0, iterations, iterations)
-		params_history = gradient_descent(rate, iterations)
-		param_x = map(lambda p: p[0], params_history)
-		param_y = map(lambda p: p[1], params_history)
-		costs = vectorized_cost(param_x, param_y)
-		if clip_min and clip_max:
-			costs = np.clip(costs, clip_min, clip_max)
-		axes.plot(iteration_counts, costs)
+z = vectorized_cost(xx, yy)
+axes.set_title("Cost Function")
+axes.set_xlabel("Feature 0")
+axes.set_ylabel("Feature 1")
+axes.contour(x, y, z, np.logspace(-2, 3, 20))
 
-# Plot cost vs. iterations for a series of convergent and non-convergent
-# learning rates
-convergent_rates = np.linspace(0.001, 0.02, 5)
-non_convergent_rates = np.linspace(0.02, 0.026, 5)
-plot_cost_function(convergent, convergent_rates, 1500, -2, 7)
-plot_cost_function(non_convergent, non_convergent_rates, 8)
+# Plot the parameter history on the contour plot for a convergent learning rate
+params_history = gradient_descent()
+param_x = map(lambda param: param[0], params_history)
+param_y = map(lambda param: param[1], params_history)
+axes.scatter(param_x, param_y, s=1, c="r")
+
+# Plot the parameter history on the contour plot for a non-convergent learning
+# rate
+params_history = gradient_descent(0.02501)[:15]
+param_x = map(lambda param: param[0], params_history)
+param_y = map(lambda param: param[1], params_history)
+axes.scatter(param_x, param_y, s=1, c="g")
+
 plt.show()

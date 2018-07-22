@@ -16,7 +16,7 @@ import numpy as np
 import scipy.io
 
 # Load training data
-training_data = scipy.io.loadmat("data-1.mat")
+training_data = scipy.io.loadmat("2-data.mat")
 images = training_data["X"]
 digits = training_data["y"]
 num_samples = images.shape[0]
@@ -30,7 +30,7 @@ digits = np.array([0 if x == 10 else x for x in digits])
 features = np.append(np.ones((num_samples, 1)), images, axis=1)
 
 # Load pre-trained neural network weights
-weights_data = scipy.io.loadmat("weights-1.mat")
+weights_data = scipy.io.loadmat("2-weights.mat")
 params1 = weights_data["Theta1"] # 25x401 weights for input layer
 params2	= weights_data["Theta2"] # 10x26 weights for hidden layer
 

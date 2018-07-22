@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import scipy.optimize
 
 # Read the data in
-data = np.genfromtxt("data-1.txt", delimiter=",")
+data = np.genfromtxt("1-data.txt", delimiter=",")
 exam1 = data[:,0]
 exam2 = data[:,1]
 admitted = data[:,2]

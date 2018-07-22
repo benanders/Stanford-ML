@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # Read in the population and profit data from a CSV file
-data = np.genfromtxt("./data-2.txt", delimiter=",")
+data = np.genfromtxt("6-data.txt", delimiter=",")
 area = data[:,0]
 bedrooms = data[:,1]
 price = data[:,2]

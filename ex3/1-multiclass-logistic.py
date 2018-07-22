@@ -16,7 +16,7 @@ import scipy.io, scipy.optimize
 #
 # `digits` is a 5000 element vector of digits 0 to 9 representing the correct
 # answer for each training example.
-data = scipy.io.loadmat("data-3.mat")
+data = scipy.io.loadmat("1-data.mat")
 images = data["X"]
 digits = data["y"]
 num_samples = digits.size

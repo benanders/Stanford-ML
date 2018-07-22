@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import scipy.optimize
 
 # Load the data
-data = np.genfromtxt("data-2.txt", delimiter=",")
+data = np.genfromtxt("2-data.txt", delimiter=",")
 test1 = data[:,0]
 test2 = data[:,1]
 accepted = data[:,2]

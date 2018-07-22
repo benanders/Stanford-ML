@@ -259,7 +259,7 @@ def predict(params, layer1_size, layer2_size, layer3_size, image):
 regularization_constant = 1.0
 
 # Load training data
-training_data = scipy.io.loadmat("data-2.mat")
+training_data = scipy.io.loadmat("1-data.mat")
 X = training_data["X"]
 y = training_data["y"]
 num_training_examples = X.shape[0]
