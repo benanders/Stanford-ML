@@ -15,6 +15,7 @@
 import numpy as np
 import numpy.random, numpy.linalg
 import scipy.io, scipy.optimize
+import matplotlib.pyplot as plt
 
 # Sigmoid activation function
 def sigmoid(z):
@@ -297,3 +298,28 @@ for i in range(0, num_training_examples):
 	if predicted == y[i]:
 		correct += 1
 print("Accuracy: " + str(float(correct) / num_training_examples * 100.0) + "%")
+
+# Visualise the hidden units (i.e. use the parameters to the hidden layer
+# neurons to form 25, 20x20 images)
+best_params1 = best_params[0:params1.size].reshape(params1.shape)
+
+# Exclude the column of bias weights
+best_params1 = best_params1[:,1:]
+
+# Create a new image of size 5*20 x 5*20
+row = 0
+column = 0
+examples = np.empty((100, 100))
+for i in range(0, best_params1.shape[0]):
+	inverted_image = best_params1[i,:].reshape(20, 20)
+	image = np.transpose(inverted_image)
+	examples[row:(row+20),column:(column+20)] = image
+
+	# Update the row and column counters
+	if row >= 80:
+		row = 0
+		column += 20
+	else:
+		row += 20
+plt.imshow(examples, interpolation="nearest")
+plt.show()
