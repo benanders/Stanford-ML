@@ -1,0 +1,227 @@
+
+Machine Learning Notes
+
+- supervised learning = have a dataset where we know the correct output
+	- e.g. classification = separating data into a set of classes
+	- e.g. regression = predicting continuous values
+- unsupervised learning = have a dataset where we don't know what the correct output should look like; we derive structure from the data ourselves
+	- e.g. clustering = grouping data into classes
+
+
+linear/polynomial regression
+
+- linear regression = fitting a straight line of best fit to some data
+
+	h_theta(X) = X * theta
+
+- bias parameter = we add a constant bias to our feature set to allow for arbitrary y axis intercepts
+
+	features = [1; X_1; X_2; etc.]
+
+	- we end up with n+1 model parameters, and a feature matrix with n+1 columns (where we originally had n features)
+
+- cost function = vertical distance between our predicted regression line and all the data points in our training set
+
+	J(theta) = 1/(2 * number of training examples) * sum over training examples [ (predicted - actual)^2 ]
+	J(theta) = 1/(2m) * sum_x [ (h_theta(x) - y)^2 ]
+
+	d/dtheta_j J(theta) = 1/m * sum_x [ (h_theta(x) - y) * x_j ]
+
+- gradient descent = move down the gradient of the cost function
+
+	theta = theta - (learning rate / num training examples) * d/dtheta J(theta)
+
+	- diagnostic: plot cost vs. number of iterations and ensure the graph is decreasing
+	- if learning rate is too large, then the cost rapidly increases as the algorithm constantly overshoots the minimum
+	- plot cost vs. number of iterations for various learning rates to chose the best one
+
+- feature normalization = normalizing each feature allows optimisation algorithms (like gradient descent) to converge much more quickly and accurately
+
+	normalized feature = (feature - mean) / standard deviation
+
+- polynomial regression = add higher powers of existing features
+
+	features = [1; X; X.^2; X.^3; etc.]
+
+- normal equation = analytical solution to linear regression
+
+	theta = (X^T X)^-1 X^T y
+
+	- slow for large number of features (>10,000); use gradient descent here
+	- (X^T X) is singular if two features are linearly dependent or we have more features than training examples
+
+
+logistic regression
+
+- logistic regression = binary classification problem where we predict the probability an input belongs to a particular class
+
+	h_theta(X) = sigmoid(X * theta)
+
+- decision boundary = set of inputs that produce a probability of 0.5; line that separates the two classes (where y = 0 and y = 1)
+
+	h_theta(X) = 0.5
+	=> X * theta = 0
+
+- cost function = logarithm-based penalty for failing to predict the correct class
+
+	J(theta) = 1/m * sum_x [ y * -log(h_theta(x)) + (1 - y) * -log(1 - h_theta(x)) ]
+
+	d/dtheta_j J(theta) = 1/m * sum_x [ (h_theta(x) - y) * x_j ]
+
+	- when y = 1, -log(h_theta(x)) penalises predictions close to 0 asymptotically
+	- when y = 0, -log(1 - h_theta(x)) penalises predictions close to 1 asymptotically
+
+- one vs. all multiclass classification = train n binary classifiers to recognise each class
+	- make a prediction by picking the most confident classifier, with the highest probability of the input belonging to its class
+
+
+bias/variance
+
+- high bias (underfitting) = model is too simple to properly capture the trends in the data
+	- "high bias" because our chosen model is biased towards being (e.g.) linear, rather than some other more correct model
+
+- high variance (overfitting) = model fits the training data but fails to generalise well to new, previously unseen inputs
+
+- regularization = penalising large model parameters to avoid overfitting
+
+	J(theta) = ... + lambda/(2m) * sum_j [ theta_j ^ 2 ]
+
+	d/dtheta J(theta) = ... + lambda/m * sum_j theta_j
+
+	- add on the sum of the square of all model parameters to the cost; EXCLUDING the bias parameter
+	- we DO NOT regularize the bias parameter because it does not contribute to overfitting
+
+- training set (60%) = set of examples used to train the model
+- validation set (20%) = set of examples used to "validate" the model; used to decide on other training parameters (e.g. lambda)
+- test set (20%) = set of examples to measure the final accuracy of our model
+	- the test set is distinct from the validation set because we've already "fit" some model parameters to the validation set
+	- the model's validation set accuracy is considered overly optimistic, and not an accurate estimate of how well the model generalises to new inputs
+
+- diagnostic: learning curves = plot training and validation error vs. number of training examples
+	- high bias = both training and validation error are high and are approximately the same
+	- high variance = low training error but high validation error
+
+- diagnostic: lambda curve = plot training and validation error vs. lambda to decide on the regularization parameter that reduces validation error the most
+
+- ways to improve the accuracy of a learning algorithm
+	1) more training examples 	<- helps overfitting
+	2) more features 			<- helps underfitting
+	3) less features 			<- helps overfitting
+	4) add polynomial features 	<- helps underfitting
+	5) increase lambda 			<- helps overfitting
+	6) decrease lambda 			<- helps underfitting
+	7) add more hidden nodes    <- helps underfitting
+	8) add more hidden layers   <- helps underfitting
+
+
+neural networks
+
+- neural network = input layer, hidden layers, output layer of totally connected neurons
+
+- forward propagation = algorithm to compute the output vector of a neural network from an input vector and a parameter matrix (theta) for each layer
+
+	input = ...
+	hidden_layer = sigmoid(theta1 * [1; input])
+	output = sigmoid(theta2 * [1; hidden_layer])
+
+- bias neuron = each layer has an additional neuron with constant activation 1
+
+- cost function = logistic cost function, but summed over each output node
+
+	J(theta) = 1/m * sum_x sum_n [ y * -log(h_theta(x)_n) + (1 - y) * -log(1 - h_theta(x)_n) ] + 1/(2m) * sum [ theta^l_ij ]
+
+	- where sum_n represents the summation over each node in the output layer
+	- the regularization term sums every parameter in every layer, EXCLUDING the bias parameters
+
+- back propagation = method to compute the gradient of the cost function wrt every model parameter theta^l_ij
+	- create Delta matrices for each layer with the same dimensions as the parameter matrices, and initialize to 0
+		Delta_input = zeros(...)
+		Delta_hidden = zeros(...)
+	- compute the Delta matrices by summing the errors over each training example
+		- use forward propagation to compute the activation vector for each layer
+			z_hidden = theta1 * [1; input]
+			activation_hidden = sigmoid(z_hidden)
+		- compute the delta vector for the output layer
+			delta_output = activation_output - correct_output
+		- compute the delta vector for the preceeding hidden layers, EXCLUDING the input layer
+			delta_hidden = (theta_hidden^T * delta_output) .* sigmoid'(z_hidden)
+			OR replace sigmoid'(z_hidden) = activation_hidden * (1 - activation_hidden)
+		- update Delta matrices for each layer using the delta vectors, EXCLUDING the delta value computed for the bias neuron
+			Delta_input += delta_hidden[1:] * input^T
+			Delta_hidden += delta_output[1:] * activation_hidden^T
+	- compute the partial derivatives from the Delta matrices
+		theta1_grad = Delta_input / m
+		theta2_grad = Delta_hidden / m
+	- add regularization term to derivatives, EXCLUDING the bias neurons
+		theta1_grad[:,1:] += lambda/m * theta1
+		theta2_grad[:,1:] += lambda/m * theta2
+
+- parameter unrolling = unrolling all parameters for all layers into a single 1D vector that we can pass to a standard optimisation algorithm
+
+- random initialization = initialise the parameter matrices theta1, theta2 with random values to break symmetry during gradient descent
+	- symmetry = if all parameters in a layer are the same, then: 1) the activation value of every neuron in that layer is the same, 2) the partial derivative wrt every parameter in the layer is the same, 3) the parameters are all changed by the same amount in one iteration of gradient descent, 4) the parameters remain the same
+	- every neuron in the layer is computing the same feature
+	- initialise each parameter to a random value between (-epsilon, epsilon) breaks this symmetry
+	- choose epsilon = sqrt(6 / (#input_neurons + #output_neurons))
+
+- diagnostic: gradient checking = numerically computing the partial derivatives wrt every model parameter theta^l_ij and comparing them to the values obtained by back propagation, to ensure the implementation's accuracy
+
+	d/dtheta_j J(theta) = (J(theta + epsilon) - J(theta - epsilon)) / (2 * epsilon)
+
+	- theta here is an unrolled parameter vector
+	- epsilon is a vector with the jth element set to some small value (0.0001)
+
+
+error metrics
+
+- single numerical error measure = allows us to easily decide if changes to a learning algorithm improve or worsen its performance
+
+- diagnostic: manual error examination = manually review the training examples your algorithm fails to classify to spot some trend that we can target
+
+- skewed classes = a classification dataset where a class y = 1 is particularly rare compared to the class y = 0
+	- percentage accuracy of classification is not a good error measure in skewed datasets, because we can easily improve this error by guessing y = 0 more often
+		- e.g. assume y = 1 makes up 0.5% of the dataset
+		- a classification algorithm where we ALWAYS predict y = 0 has 0.5% error
+		- thus if a change to our learning algorithm improves the error from 1% to 0.7%, the "improvement" might just be guessing y = 0 more often
+
+- true positive = our algorithm correctly predicted y = 1
+- true negative = our algorithm correctly predicted y = 0
+- false positive = our algorithm incorrectly predicted y = 1, when the actual value was y = 0
+- false negative = our algorithm incorrectly predicted y = 0, when the actual value was y = 1
+
+- precision = an error metric that measures what fraction of y = 1 predictions made by the algorithm were correct
+
+	precision = #true positives / (#predicted positives)
+	          = #true positives / (#true positives + #false positives)
+
+	- precision = the fraction of predictions that were correct
+
+- recall = an error metric that measures what fraction of y = 1 cases in the dataset the algorithm correctly predicted
+
+	recall = #true positives / (#actual positives)
+	       = #true positives / (#true positives + #false negatives)
+
+	- recall = the fraction of actual positives the algorithm was accurately able to "remember" or "recall" (i.e. get correct)
+
+- F_1 score (F score) = a single numerical evaluation metric for our learning algorithm that combines precision and recall
+
+	F score = 2 * (PR) / (P + R)
+
+	- if P = R = 1 (best case), then F score = 1
+	- if P = 0 or R = 0, then F score = 0
+
+- threshold = probability value above which we chose to classify an input as y = 1
+
+	if h_theta(x) > threshold, predict y = 1
+	if h_theta(x) <= threshold, predict y = 0
+
+	- normally, we chose threshold = 0.5 so that we predict y = 1 when it's more likely than y = 0
+	- chosing a threshold > 0.5 makes our algorithm more precise, but has a lower recall
+	- chosing a threshold < 0.5 makes our algorithm have better recall, but a lower precision
+
+	- plot F score on validation data vs. threshold to chose the best threshold value
+
+- a learning algorithm is likely to perform well when:
+	1) the features capture the necessary information to predict y accurately (could a human expert accurately predict y with the given features?)
+	2) the algorithm can represent complex hypothesis functions; it has lots of parameters (achieves low bias)
+	3) training set is large (achieves low variance)
